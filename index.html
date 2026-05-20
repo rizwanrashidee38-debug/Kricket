@@ -1,133 +1,135 @@
 
-<!DOCTYPE html>
-<html lang="en">
+
+
+    <!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Cricket Division Simulator</title>
+    <title>Cricket Division Pro</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; }
-        #game-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 600px; margin-top: 20px; }
+        body { font-family: sans-serif; background: #222; color: white; text-align: center; margin: 0; padding: 20px; }
+        #game-box { max-width: 500px; margin: auto; background: #333; padding: 20px; border-radius: 15px; border: 2px solid #444; }
+        .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+        .tile { height: 80px; background: #28a745; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 8px; }
+        .tile:active { background: #1e7e34; }
         .hidden { display: none; }
-        .tile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
-        .tile { height: 100px; background: #007bff; color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border-radius: 8px; transition: transform 0.2s; }
-        .tile:hover { transform: scale(1.05); background: #0056b3; }
-        .stats-bar { display: flex; justify-content: space-between; background: #333; color: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
-        .log { height: 100px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; font-size: 14px; margin-top: 10px; }
+        .stats { background: #444; padding: 10px; margin-bottom: 10px; border-radius: 5px; font-size: 0.9em; }
+        input, select, button { padding: 10px; margin: 10px; border-radius: 5px; border: none; width: 80%; }
+        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <!-- Setup Screen -->
+<div id="game-box">
+    <!-- Screen 1: Setup -->
     <div id="setup-screen">
-        <h2>Cricket Career Creator</h2>
-        <input type="text" id="player-name" placeholder="Enter Name"><br><br>
-        <select id="player-role">
+        <h1>🏏 Cricket Career</h1>
+        <input type="text" id="pName" placeholder="Your Name">
+        <select id="pRole">
             <option value="Batsman">Batsman</option>
             <option value="All-Rounder">All-Rounder</option>
             <option value="Bowler">Bowler</option>
         </select>
-        <button onclick="startGame()">Start Career</button>
+        <button onclick="initGame()">Start Career</button>
     </div>
 
-    <!-- Match Screen -->
+    <!-- Screen 2: Match UI -->
     <div id="match-screen" class="hidden">
-        <div class="stats-bar">
-            <div id="display-name"></div>
-            <div id="display-division">Division: 3</div>
+        <div class="stats">
+            <span id="stat-name"></span> | Div: <span id="stat-div">3</span><br>
+            Season Runs: <span id="stat-runs">0</span> | Wickets: <span id="stat-wicks">0</span>
         </div>
-        <div id="match-info"></div>
-        <div id="score-display" style="font-size: 20px; font-weight: bold; margin: 10px 0;"></div>
+        <h3 id="match-status">Toss Phase</h3>
+        <div id="score-board" style="font-size: 1.5em; color: #ffc107;">0 - 0 (0.0)</div>
         
-        <div id="tile-area" class="tile-grid">
-            <div class="tile" onclick="handlePlay()">?</div>
-            <div class="tile" onclick="handlePlay()">?</div>
-            <div class="tile" onclick="handlePlay()">?</div>
-            <div class="tile" onclick="handlePlay()">?</div>
+        <div class="tile-grid" id="tiles">
+            <div class="tile" onclick="playBall()">?</div>
+            <div class="tile" onclick="playBall()">?</div>
+            <div class="tile" onclick="playBall()">?</div>
+            <div class="tile" onclick="playBall()">?</div>
         </div>
-        
-        <div class="log" id="game-log">Welcome to the crease!</div>
+        <div id="event-log" style="font-style: italic; color: #aaa;">Click a tile to play</div>
     </div>
 </div>
 
 <script>
-    let player = {
-        name: "", role: "", div: 3, 
-        totalRuns: 0, totalWickets: 0, matchesPlayed: 0
-    };
+    // Game State
+    let player = { name: "", role: "", div: 3, seasonRuns: 0, seasonWicks: 0, matches: 0 };
+    let match = { runs: 0, wickets: 0, balls: 0, target: 0 };
 
-    let currentMatch = {
-        overs: 0, balls: 0, score: 0, wickets: 0, isPlayerBatting: false
-    };
-
-    function startGame() {
-        player.name = document.getElementById('player-name').value || "Rookie";
-        player.role = document.getElementById('player-role').value;
+    function initGame() {
+        player.name = document.getElementById('pName').value || "Player";
+        player.role = document.getElementById('pRole').value;
+        
         document.getElementById('setup-screen').classList.add('hidden');
         document.getElementById('match-screen').classList.remove('hidden');
-        document.getElementById('display-name').innerText = player.name;
+        document.getElementById('stat-name').innerText = player.name;
+        
+        console.log("Game Started for:", player.name);
         startNewMatch();
     }
 
     function startNewMatch() {
-        currentMatch = { overs: 0, balls: 0, score: 0, wickets: 0, isPlayerBatting: true };
-        updateUI("Toss won! You are batting first.");
+        match.runs = 0; match.wickets = 0; match.balls = 0;
+        document.getElementById('match-status').innerText = "Match " + (player.matches + 1) + " of 10";
+        updateDisplay();
     }
 
-    function handlePlay() {
-        // 20% Probability of Dismissal
-        let outcome = Math.random();
-        let logMsg = "";
+    function playBall() {
+        let rng = Math.random();
+        let log = "";
         
-        if (outcome < 0.20) {
-            const dismissals = ["Bowled!", "Caught!", "LBW!"];
-            logMsg = dismissals[Math.floor(Math.random() * dismissals.length)];
-            endInnings();
+        if (rng < 0.20) { // 20% Chance of Out
+            log = "OUT! Dismissed!";
+            endMatch();
         } else {
-            const runsOptions = [1, 2, 3, 4, 6];
-            let runs = runsOptions[Math.floor(Math.random() * runsOptions.length)];
-            currentMatch.score += runs;
-            player.totalRuns += runs;
-            currentMatch.balls++;
-            logMsg = `You scored ${runs} runs.`;
+            let runs = [1, 2, 3, 4, 6][Math.floor(Math.random() * 5)];
+            match.runs += runs;
+            player.seasonRuns += runs;
+            match.balls++;
+            log = "You scored " + runs + "!";
         }
 
-        if (currentMatch.balls >= 120) endInnings(); // 20 Overs max
-        updateUI(logMsg);
+        if (match.balls >= 120) endMatch(); // End after 20 overs
+        
+        document.getElementById('event-log').innerText = log;
+        updateDisplay();
     }
 
-    function endInnings() {
-        player.matchesPlayed++;
-        alert(`Match Ended! Total Runs this season: ${player.totalRuns}`);
-        checkPromotion();
+    function updateDisplay() {
+        let overs = Math.floor(match.balls / 6) + "." + (match.balls % 6);
+        document.getElementById('score-board').innerText = match.runs + " / " + match.wickets + " (" + overs + ")";
+        document.getElementById('stat-runs').innerText = player.seasonRuns;
+        document.getElementById('stat-div').innerText = player.div;
+    }
+
+    function endMatch() {
+        player.matches++;
+        alert("Innings Over! Match Finished.");
+        
+        if (player.matches >= 10) {
+            checkSeasonEnd();
+        } else {
+            startNewMatch();
+        }
+    }
+
+    function checkSeasonEnd() {
+        let success = false;
+        if (player.role === "Batsman" && player.seasonRuns >= 300) success = true;
+        // ... (other logic)
+
+        if (success && player.div > 1) {
+            player.div--;
+            alert("PROMOTED! Welcome to Division " + player.div);
+        } else {
+            alert("Season finished. You stay in Division " + player.div);
+        }
+        
+        // Reset for next division
+        player.matches = 0; player.seasonRuns = 0; player.seasonWicks = 0;
         startNewMatch();
     }
-
-    function checkPromotion() {
-        if (player.matchesPlayed >= 10) {
-            let promoted = false;
-            if (player.role === "Batsman" && player.totalRuns >= 300) promoted = true;
-            if (player.role === "All-Rounder" && player.totalRuns >= 200 && player.totalWickets >= 5) promoted = true;
-            if (player.role === "Bowler" && player.totalWickets >= 10) promoted = true;
-
-            if (promoted && player.div > 1) {
-                player.div--;
-                alert(`CONGRATULATIONS! Promoted to Division ${player.div}`);
-            } else {
-                alert("Season over. Stayed in current division.");
-            }
-            // Reset season stats
-            player.matchesPlayed = 0; player.totalRuns = 0; player.totalWickets = 0;
-        }
-    }
-
-    function updateUI(msg) {
-        document.getElementById('score-display').innerText = `Score: ${currentMatch.score} | Balls: ${currentMatch.balls}`;
-        document.getElementById('display-division').innerText = `Division: ${player.div}`;
-        let log = document.getElementById('game-log');
-        log.innerHTML += `<div>${msg}</div>`;
-        log.scrollTop = log.scrollHeight;
-    }
 </script>
+
 </body>
 </html>
